@@ -16,7 +16,8 @@
     "qr-code-styling": "^1.9.2",
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "use-prms": "^0.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
