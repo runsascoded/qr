@@ -84,17 +84,13 @@ export default function Encoder() {
         />
       </label>
 
-      <div className="row">
-        <label className="checkbox">
-          <input type="checkbox" checked={uppercase} onChange={e => setUppercase(e.target.checked)} />
-          uppercase (smaller QRs for case-insensitive URLs)
-        </label>
-      </div>
-
       {infoLower && infoUpper && (
-        <div className="info">
-          <Stat label="lower" info={infoLower} active={!uppercase} />
-          <Stat label="UPPER" info={infoUpper} active={uppercase} />
+        <div className="case">
+          <span className="hint">Uppercasing can shrink QRs for case-insensitive URLs:</span>
+          <div className="info">
+            <Stat label="lower" info={infoLower} active={!uppercase} onClick={() => setUppercase(false)} />
+            <Stat label="UPPER" info={infoUpper} active={uppercase} onClick={() => setUppercase(true)} />
+          </div>
         </div>
       )}
 
@@ -157,14 +153,19 @@ export default function Encoder() {
   )
 }
 
-function Stat({ label, info, active }: { label: string; info: ReturnType<typeof getQRInfo>; active: boolean }) {
+function Stat({ label, info, active, onClick }: {
+  label: string
+  info: ReturnType<typeof getQRInfo>
+  active: boolean
+  onClick: () => void
+}) {
   if (!info) return null
   return (
-    <div className={`stat ${active ? 'active' : ''}`}>
+    <button type="button" className={`stat ${active ? 'active' : ''}`} onClick={onClick}>
       <span className="label">{label}</span>
       <span>V{info.version}</span>
       <span>{info.modules}×{info.modules}</span>
       <span className="mode">{info.mode}</span>
-    </div>
+    </button>
   )
 }

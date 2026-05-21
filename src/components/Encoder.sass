@@ -24,18 +24,13 @@
       color: var(--fg)
       resize: vertical
 
-  .row
+  .case
     display: flex
-    gap: 1rem
-    align-items: center
-    flex-wrap: wrap
-
-  .checkbox
-    display: inline-flex
-    align-items: center
-    gap: 0.4rem
-    cursor: pointer
-    font-size: 0.9rem
+    flex-direction: column
+    gap: 0.35rem
+    .hint
+      font-size: 0.8rem
+      color: var(--fg-mute)
 
   .info
     display: flex
@@ -49,9 +44,15 @@
       border: 1px solid var(--border)
       border-radius: 4px
       background: var(--bg-elev)
+      color: var(--fg)
+      font: inherit
+      cursor: pointer
       opacity: 0.55
+      &:hover
+        opacity: 0.8
       &.active
         opacity: 1
+        cursor: default
         border-color: var(--accent)
       .label
         color: var(--fg-mute)
