@@ -17,9 +17,11 @@
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "use-prms": "^0.4.1"
+    "use-prms": "^0.4.1",
+    "workers-og": "^0.0.27"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260521.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
     "@types/qrcode": "^1.5.6",
