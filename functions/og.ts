@@ -40,19 +40,20 @@ export const onRequest: PagesFunction = async (ctx) => {
     const qr = `data:image/svg+xml;base64,${btoa(qrSvg)}`
     const font = await loadFont()
 
-    const left = div('flex-direction:column;flex:1;',
-      div('font-size:128px;font-weight:700;letter-spacing:1px;', 'QR')
-      + div('width:96px;height:8px;background:#58a6ff;border-radius:4px;margin:24px 0 30px;')
-      + div('font-size:30px;color:#8b949e;', 'QR code for')
-      + div('font-size:40px;font-weight:700;line-height:1.3;word-break:break-all;', escapeHtml(clip(text, 84))),
+    const display = text.replace(/^https?:\/\//i, '')
+    const left = div(
+      'flex-direction:column;flex:1;justify-content:center;',
+      div('font-size:28px;font-weight:700;color:#58a6ff;', 'qr.rbw.sh')
+      + div('font-size:27px;color:#8b949e;margin:36px 0 12px;', 'QR code for')
+      + div('font-size:54px;font-weight:700;line-height:1.2;word-break:break-all;', escapeHtml(clip(display, 60))),
     )
     const card = div(
-      'background:#fff;border-radius:28px;padding:36px;',
-      `<img src="${qr}" width="396" height="396" />`,
+      'background:#fff;border-radius:26px;padding:18px;',
+      `<img src="${qr}" width="500" height="500" />`,
     )
     const html = div(
       'width:1200px;height:630px;background:#0d1117;color:#e6edf3;'
-      + 'font-family:Inter;align-items:center;gap:72px;padding:0 88px;',
+      + 'font-family:Inter;align-items:center;gap:56px;padding:0 64px;',
       left + card,
     )
 
