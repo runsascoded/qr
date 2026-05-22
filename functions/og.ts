@@ -2,7 +2,7 @@
 import QRCode from 'qrcode'
 import { ImageResponse } from 'workers-og'
 
-// On-the-fly 1200×630 OpenGraph image: the QR for `?text=…` on the same
+// On-the-fly 1200×630 OpenGraph image: the QR for `?t=…` on the same
 // dark card as the static /og.jpg. Referenced by _middleware.ts.
 //
 // Satori (inside workers-og) requires every element with >1 child to
@@ -29,7 +29,7 @@ function loadFont(): Promise<ArrayBuffer> {
 const div = (style: string, inner = '') => `<div style="display:flex;${style}">${inner}</div>`
 
 export const onRequest: PagesFunction = async (ctx) => {
-  const text = new URL(ctx.request.url).searchParams.get('text') || 'https://qr.rbw.sh/'
+  const text = new URL(ctx.request.url).searchParams.get('t') || 'https://qr.rbw.sh/'
   try {
     const qrSvg = await QRCode.toString(text, {
       type: 'svg',

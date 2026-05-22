@@ -20,7 +20,7 @@ const DOT_TYPES: DotType[] = ['square', 'dots', 'rounded', 'classy', 'classy-rou
 
 // Encoder state lives in the URL, so every QR is a shareable link.
 const PARAMS = {
-  text: defStringParam('https://qr.rbw.sh/'),
+  t: defStringParam('https://qr.rbw.sh/'),
   u: boolParam,
   lib: enumParam<Lib>('minimal', ['minimal', 'styled']),
   ecl: enumParam<ECL>('L', ECLs),
@@ -33,7 +33,7 @@ const PARAMS = {
 
 export default function Encoder() {
   const { values, setValues } = useUrlStates(PARAMS)
-  const { text, u: uppercase, lib, ecl, m: margin, s: scale, fg, bg, dot: dotType } = values
+  const { t: text, u: uppercase, lib, ecl, m: margin, s: scale, fg, bg, dot: dotType } = values
 
   const [svg, setSvg] = useState<string>('')
   const [err, setErr] = useState<string | null>(null)
@@ -85,7 +85,7 @@ export default function Encoder() {
         <span>Text / URL</span>
         <textarea
           value={text}
-          onChange={e => setValues({ text: e.target.value })}
+          onChange={e => setValues({ t: e.target.value })}
           rows={3}
           spellCheck={false}
           placeholder="https://example.com/"

@@ -1,6 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
-// Per-request OpenGraph/Twitter <meta> rewriting. A shared `?text=…` link
+// Per-request OpenGraph/Twitter <meta> rewriting. A shared `?t=…` link
 // gets a link preview of *that* QR — which static GitHub Pages can't do,
 // but a Cloudflare Pages Function can. Crawlers don't run JS, so the tags
 // have to be correct in the HTML as served.
@@ -20,7 +20,7 @@ export const onRequest: PagesFunction = async (ctx) => {
   if (!(res.headers.get('content-type') ?? '').includes('text/html')) return res
 
   const url = new URL(ctx.request.url)
-  const text = url.searchParams.get('text')
+  const text = url.searchParams.get('t')
   if (!text) return res // default page keeps the static /og.jpg tags
 
   const image = `${url.origin}/og?${url.searchParams}`
