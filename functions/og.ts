@@ -65,7 +65,9 @@ export const onRequest: PagesFunction = async (ctx) => {
     const png = await rendered.arrayBuffer()
     if (!png.byteLength) throw new Error('ImageResponse produced 0 bytes')
     return new Response(png, {
-      headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=300' },
+      // The QR for a given `t` never changes — cache hard so reshared
+      // links don't re-invoke the renderer (also blunts quota burn).
+      headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
     })
   } catch (e) {
     // A broken render still previews — fall back to the static card.
