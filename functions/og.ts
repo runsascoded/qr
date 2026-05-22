@@ -28,13 +28,23 @@ function loadFont(): Promise<ArrayBuffer> {
 
 const div = (style: string, inner = '') => `<div style="display:flex;${style}">${inner}</div>`
 
+const ECLS = ['L', 'M', 'Q', 'H']
+
 export const onRequest: PagesFunction = async (ctx) => {
-  const text = new URL(ctx.request.url).searchParams.get('t') || 'https://qr.rbw.sh/'
+  const params = new URL(ctx.request.url).searchParams
+  const text = params.get('t') || 'https://qr.rbw.sh/'
   try {
-    const qrSvg = await QRCode.toString(text, {
+    // Mirror the app's encode options so the preview matches the page.
+    const eclRaw = params.get('ecl') ?? ''
+    const ecl = (ECLS.includes(eclRaw) ? eclRaw : 'L') as 'L' | 'M' | 'Q' | 'H'
+    const mRaw = params.get('m')
+    const margin = mRaw && Number.isFinite(+mRaw) ? Math.min(20, Math.max(0, Math.trunc(+mRaw))) : 1
+    const qrText = params.has('u') ? text.toUpperCase() : text
+
+    const qrSvg = await QRCode.toString(qrText, {
       type: 'svg',
-      errorCorrectionLevel: 'M',
-      margin: 1,
+      errorCorrectionLevel: ecl,
+      margin,
       color: { dark: '#0d1117', light: '#ffffff' },
     })
     const qr = `data:image/svg+xml;base64,${btoa(qrSvg)}`
@@ -65,8 +75,8 @@ export const onRequest: PagesFunction = async (ctx) => {
     const png = await rendered.arrayBuffer()
     if (!png.byteLength) throw new Error('ImageResponse produced 0 bytes')
     return new Response(png, {
-      // The QR for a given `t` never changes — cache hard so reshared
-      // links don't re-invoke the renderer (also blunts quota burn).
+      // The QR for a given set of params never changes — cache hard so
+      // reshared links don't re-invoke the renderer (also blunts abuse).
       headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
     })
   } catch (e) {
