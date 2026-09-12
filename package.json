@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "pages": "wrangler pages dev dist --port 3018",
+    "deploy": "pnpm build && wrangler pages deploy dist --project-name qr-rbw",
+    "deploy:dev": "pnpm build && wrangler pages deploy dist --project-name qr-rbw --branch dev",
     "clean": "rm -rf node_modules/.vite dist"
   },
   "dependencies": {
