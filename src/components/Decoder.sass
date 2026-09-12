@@ -27,7 +27,15 @@
 
   .thumb
     display: flex
-    justify-content: center
+    flex-direction: column
+    align-items: center
+    gap: 0.35rem
+    .meta
+      display: flex
+      gap: 0.75rem
+      font-family: var(--mono)
+      font-size: 0.8rem
+      color: var(--fg-mute)
     img
       max-width: min(100%, 240px)
       max-height: 240px

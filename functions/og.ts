@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
-import QRCode from 'qrcode'
 import { ImageResponse } from 'workers-og'
+import { normalizeHex } from '../src/lib/color'
+import { renderSvg, type ECL } from '../src/lib/render'
 
 // On-the-fly 1200×630 OpenGraph image: the QR for `?t=…` on the same
 // dark card as the static /og.jpg. Referenced by _middleware.ts.
@@ -35,17 +36,24 @@ export const onRequest: PagesFunction = async (ctx) => {
   const text = params.get('t') || 'https://qr.rbw.sh/'
   try {
     // Mirror the app's encode options so the preview matches the page.
+    const int = (k: string, init: number, lo: number, hi: number): number => {
+      const raw = params.get(k)
+      return raw && Number.isFinite(+raw) ? Math.min(hi, Math.max(lo, Math.trunc(+raw))) : init
+    }
     const eclRaw = params.get('ecl') ?? ''
-    const ecl = (ECLS.includes(eclRaw) ? eclRaw : 'L') as 'L' | 'M' | 'Q' | 'H'
-    const mRaw = params.get('m')
-    const margin = mRaw && Number.isFinite(+mRaw) ? Math.min(20, Math.max(0, Math.trunc(+mRaw))) : 1
-    const qrText = params.has('u') ? text.toUpperCase() : text
-
-    const qrSvg = await QRCode.toString(qrText, {
-      type: 'svg',
-      errorCorrectionLevel: ecl,
-      margin,
-      color: { dark: '#0d1117', light: '#ffffff' },
+    const ecl = (ECLS.includes(eclRaw) ? eclRaw : 'L') as ECL
+    const bg = normalizeHex(params.get('bg') ?? '') ?? '#ffffff'
+    const qrSvg = renderSvg({
+      text: params.has('u') ? text.toUpperCase() : text,
+      ecl,
+      version: int('v', 0, 0, 40),
+      margin: int('m', 1, 0, 20),
+      scale: 10,
+      fg: normalizeHex(params.get('fg') ?? '') ?? '#0d1117',
+      bg,
+      r: int('r', 0, 0, 50),
+      ds: int('ds', 100, 10, 100),
+      fr: int('fr', 0, 0, 50),
     })
     const qr = `data:image/svg+xml;base64,${btoa(qrSvg)}`
     const font = await loadFont()
@@ -58,7 +66,7 @@ export const onRequest: PagesFunction = async (ctx) => {
       + div('font-size:54px;font-weight:700;line-height:1.2;word-break:break-all;', escapeHtml(clip(display, 60))),
     )
     const card = div(
-      'background:#fff;border-radius:26px;padding:18px;',
+      `background:${bg};border-radius:26px;padding:18px;`,
       `<img src="${qr}" width="500" height="500" />`,
     )
     const html = div(

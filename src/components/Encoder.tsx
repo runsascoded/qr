@@ -1,65 +1,40 @@
-import { useEffect, useMemo, useState } from 'react'
-import { boolParam, defStringParam, enumParam, intParam, useUrlStates } from 'use-prms'
-import {
-  downloadBlob,
-  getQRInfo,
-  type ECL,
-  type Lib,
-  renderMinimalPng,
-  renderMinimalSvg,
-  renderStyledPng,
-  renderStyledSvg,
-  slugify,
-  svgToBlob,
-} from '../lib/qr'
-import type { DotType } from 'qr-code-styling'
+import { useCallback, useMemo, useState } from 'react'
+import type { useUrlStates } from 'use-prms'
+import { downloadBlob, getQRInfo, renderPng, renderSvg, slugify, svgToBlob, type ECL } from '../lib/qr'
+import { normalizeHex } from '../lib/color'
+import { ECLs, type PARAMS } from '../lib/params'
+import { usePagePaste } from '../lib/paste'
 import './Encoder.sass'
 
-const ECLs: ECL[] = ['L', 'M', 'Q', 'H']
-const DOT_TYPES: DotType[] = ['square', 'dots', 'rounded', 'classy', 'classy-rounded', 'extra-rounded']
+type UrlState = ReturnType<typeof useUrlStates<typeof PARAMS>>
 
-// Encoder state lives in the URL, so every QR is a shareable link.
-const PARAMS = {
-  t: defStringParam('https://qr.rbw.sh/'),
-  u: boolParam,
-  lib: enumParam<Lib>('minimal', ['minimal', 'styled']),
-  ecl: enumParam<ECL>('L', ECLs),
-  m: intParam(1),
-  s: intParam(10),
-  fg: defStringParam('#000000'),
-  bg: defStringParam('#ffffff'),
-  dot: enumParam<DotType>('square', DOT_TYPES),
-}
+export default function Encoder({ values, setValues }: Pick<UrlState, 'values' | 'setValues'>) {
+  const { t: text, u: uppercase, ecl, v: version, m: margin, s: scale, fg, bg, r, ds, fr } = values
 
-export default function Encoder() {
-  const { values, setValues } = useUrlStates(PARAMS)
-  const { t: text, u: uppercase, lib, ecl, m: margin, s: scale, fg, bg, dot: dotType } = values
+  const [pngErr, setPngErr] = useState<string | null>(null)
 
-  const [svg, setSvg] = useState<string>('')
-  const [err, setErr] = useState<string | null>(null)
+  // Text pasted anywhere outside an input becomes the QR payload.
+  const onPasteText = useCallback((t: string) => setValues({ t }), [setValues])
+  usePagePaste({ onText: onPasteText })
 
   const finalText = uppercase ? text.toUpperCase() : text
 
   const opts = useMemo(() => ({
-    text: finalText, ecl, margin, scale, fg, bg,
-  }), [finalText, ecl, margin, scale, fg, bg])
+    text: finalText, ecl, version, margin, scale, fg, bg, r, ds, fr,
+  }), [finalText, ecl, version, margin, scale, fg, bg, r, ds, fr])
 
-  const styledOpts = useMemo(() => ({ ...opts, dotType }), [opts, dotType])
-
-  const infoLower = useMemo(() => getQRInfo(text, ecl), [text, ecl])
-  const infoUpper = useMemo(() => getQRInfo(text.toUpperCase(), ecl), [text, ecl])
+  const infoLower = useMemo(() => getQRInfo(text, ecl, version), [text, ecl, version])
+  const infoUpper = useMemo(() => getQRInfo(text.toUpperCase(), ecl, version), [text, ecl, version])
   const info = uppercase ? infoUpper : infoLower
 
-  useEffect(() => {
-    let cancelled = false
-    setErr(null)
-    if (!finalText) { setSvg(''); return }
-    const render = lib === 'minimal' ? renderMinimalSvg(opts) : renderStyledSvg(styledOpts)
-    render
-      .then(s => { if (!cancelled) setSvg(s) })
-      .catch(e => { if (!cancelled) { setSvg(''); setErr(String(e?.message ?? e)) } })
-    return () => { cancelled = true }
-  }, [lib, opts, styledOpts, finalText])
+  const { svg, err: renderErr } = useMemo(() => {
+    if (!finalText) return { svg: '', err: null }
+    try {
+      return { svg: renderSvg(opts), err: null }
+    } catch (e) {
+      return { svg: '', err: String((e as Error).message ?? e) }
+    }
+  }, [opts, finalText])
 
   const stem = slugify(finalText)
 
@@ -71,10 +46,9 @@ export default function Encoder() {
   async function downloadPng() {
     if (!finalText) return
     try {
-      const blob = lib === 'minimal' ? await renderMinimalPng(opts) : await renderStyledPng(styledOpts)
-      downloadBlob(blob, `${stem}.png`)
+      downloadBlob(await renderPng(opts), `${stem}.png`)
     } catch (e) {
-      setErr(String((e as Error).message ?? e))
+      setPngErr(String((e as Error).message ?? e))
     }
   }
 
@@ -106,17 +80,14 @@ export default function Encoder() {
         <legend>Options</legend>
         <div className="grid">
           <label>
-            <span>Library</span>
-            <select value={lib} onChange={e => setValues({ lib: e.target.value as Lib })}>
-              <option value="minimal">minimal (node-qrcode)</option>
-              <option value="styled">styled (qr-code-styling)</option>
-            </select>
-          </label>
-          <label>
             <span>Error correction</span>
             <select value={ecl} onChange={e => setValues({ ecl: e.target.value as ECL })}>
               {ECLs.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
+          </label>
+          <label>
+            <span>Version (0 = auto)</span>
+            <input type="number" min={0} max={40} value={version} onChange={e => setValues({ v: +e.target.value })} />
           </label>
           <label>
             <span>Margin (modules)</span>
@@ -128,19 +99,20 @@ export default function Encoder() {
           </label>
           <ColorInput label="Foreground" value={fg} onChange={v => setValues({ fg: v })} />
           <ColorInput label="Background" value={bg} onChange={v => setValues({ bg: v })} />
-          {lib === 'styled' && (
-            <label>
-              <span>Dot type</span>
-              <select value={dotType} onChange={e => setValues({ dot: e.target.value as DotType })}>
-                {DOT_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </label>
-          )}
+        </div>
+      </fieldset>
+
+      <fieldset className="options">
+        <legend>Style</legend>
+        <div className="grid">
+          <Slider label="Dot rounding" value={r} min={0} max={50} unit="%" onChange={v => setValues({ r: v })} />
+          <Slider label="Dot size" value={ds} min={40} max={100} unit="%" onChange={v => setValues({ ds: v })} />
+          <Slider label="Finder rounding" value={fr} min={0} max={50} unit="%" onChange={v => setValues({ fr: v })} />
         </div>
       </fieldset>
 
       <div className="preview">
-        {err && <pre className="err">{err}</pre>}
+        {(renderErr ?? pngErr) && <pre className="err">{renderErr ?? pngErr}</pre>}
         {svg && info && (
           <>
             <div className="qr" dangerouslySetInnerHTML={{ __html: svg }} />
@@ -172,11 +144,20 @@ function Stat({ label, info, active, onClick }: {
   )
 }
 
-// '#rgb' / 'rgb' / '#rrggbb' / 'rrggbb' → '#rrggbb', else null.
-function normalizeHex(v: string): string | null {
-  let h = v.trim().replace(/^#/, '').toLowerCase()
-  if (/^[0-9a-f]{3}$/.test(h)) h = h.split('').map(c => c + c).join('')
-  return /^[0-9a-f]{6}$/.test(h) ? `#${h}` : null
+function Slider({ label, value, min, max, unit, onChange }: {
+  label: string
+  value: number
+  min: number
+  max: number
+  unit: string
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="slider">
+      <span>{label} <span className="val">{value}{unit}</span></span>
+      <input type="range" min={min} max={max} value={value} onChange={e => onChange(+e.target.value)} />
+    </label>
+  )
 }
 
 function ColorInput({ label, value, onChange }: {
@@ -185,7 +166,11 @@ function ColorInput({ label, value, onChange }: {
   onChange: (value: string) => void
 }) {
   const [draft, setDraft] = useState(value)
-  useEffect(() => { setDraft(value) }, [value])
+  const [prev, setPrev] = useState(value)
+  if (value !== prev) {  // external change (URL, decode) wins over the draft
+    setPrev(value)
+    setDraft(value)
+  }
 
   function commit() {
     const hex = normalizeHex(draft)

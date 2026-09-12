@@ -1,29 +1,37 @@
-import { useState, type DragEvent } from 'react'
+import { useCallback, useState, type DragEvent } from 'react'
 import { decodeImageFile, type DecodeResult } from '../lib/decode'
+import { usePagePaste } from '../lib/paste'
 import './Decoder.sass'
 
-export default function Decoder() {
+export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) => void }) {
   const [result, setResult] = useState<DecodeResult | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [imgUrl, setImgUrl] = useState<string | null>(null)
+  const [dims, setDims] = useState<{ w: number, h: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  async function handleFile(file: File | null | undefined) {
+  const handleFile = useCallback(async (file: File | null | undefined) => {
     if (!file) return
     setErr(null)
     setResult(null)
+    setDims(null)
     setCopied(false)
-    if (imgUrl) URL.revokeObjectURL(imgUrl)
-    setImgUrl(URL.createObjectURL(file))
+    setImgUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
     try {
       const r = await decodeImageFile(file)
       if (!r) { setErr('No QR code found in image.'); return }
       setResult(r)
+      onDecoded(r)
     } catch (e) {
       setErr(String((e as Error).message ?? e))
     }
-  }
+  }, [onDecoded])
+
+  usePagePaste({ onImage: handleFile })
 
   async function copy() {
     if (!result) return
@@ -53,12 +61,24 @@ export default function Decoder() {
           onChange={e => handleFile(e.target.files?.[0])}
           hidden
         />
-        <span>Drop a QR-code image here, or click to choose</span>
+        <span>Drop a QR-code image here, paste one (<kbd>⌘V</kbd> / <kbd>Ctrl+V</kbd>), or click to choose</span>
       </label>
 
       {imgUrl && (
         <div className="thumb">
-          <img src={imgUrl} alt="uploaded QR" />
+          <img
+            src={imgUrl}
+            alt="uploaded QR"
+            onLoad={e => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+          />
+          {dims && (
+            <div className="meta">
+              <span>{dims.w}×{dims.h} px</span>
+              {result && <span>V{result.version}</span>}
+              {result && <span>{result.modules}×{result.modules} modules</span>}
+              {result && <span>ECL {result.ecl}</span>}
+            </div>
+          )}
         </div>
       )}
 

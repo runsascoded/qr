@@ -1,8 +1,11 @@
 import jsQR, { type QRCode } from 'jsqr'
+import { analyze, type Analysis } from './analyze'
 
-export type DecodeResult = {
+export type DecodeResult = Analysis & {
   data: string
   location: QRCode['location']
+  version: number
+  modules: number
   width: number
   height: number
 }
@@ -20,7 +23,15 @@ export async function decodeImageFile(file: File): Promise<DecodeResult | null> 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' })
     if (!code) return null
-    return { data: code.data, location: code.location, width: canvas.width, height: canvas.height }
+    return {
+      ...analyze(imageData, code.location, code.version),
+      data: code.data,
+      location: code.location,
+      version: code.version,
+      modules: 17 + 4 * code.version,
+      width: canvas.width,
+      height: canvas.height,
+    }
   } finally {
     URL.revokeObjectURL(url)
   }
