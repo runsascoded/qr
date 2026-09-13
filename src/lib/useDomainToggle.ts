@@ -5,7 +5,7 @@ import { useActions } from 'use-kbd'
 // omnibar actions jump to a specific one. Registered at the app root so every
 // view inherits it.
 const LOCAL = 'http://localhost:3017'
-const DEV = 'https://dev.qr-rbw.pages.dev' // TODO: dev.qr.rbw.sh once the dev Pages project has a custom domain
+const DEV = 'https://dev.qr.rbw.sh'
 const PROD = 'https://qr.rbw.sh'
 const CYCLE = [LOCAL, DEV, PROD]
 

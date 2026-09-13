@@ -54,6 +54,13 @@ pnpm lint
 
 ## Deploy
 
-Hosted on Cloudflare Pages; pushes to `main` build `dist/` and deploy automatically. The `/og` renderer and OpenGraph `<meta>` rewriting live in `functions/` as Pages Functions.
+Hosted on Cloudflare Pages via two git-connected projects, both building `dist/` from this repo:
+
+| Env  | Project  | Branch | URL                            |
+| ---- | -------- | ------ | ------------------------------ |
+| prod | `qr`     | `main` | [qr.rbw.sh](https://qr.rbw.sh/)     |
+| dev  | `qr-dev` | `dev`  | [dev.qr.rbw.sh](https://dev.qr.rbw.sh/) |
+
+Pushing to a branch triggers that project's build + deploy automatically — `pnpm deploy` (push `main`) and `pnpm deploy:dev` (push current branch to `dev`) are convenience wrappers. The `/og` renderer and OpenGraph `<meta>` rewriting live in `functions/` as Pages Functions.
 
 [qr.rbw.sh]: https://qr.rbw.sh/
