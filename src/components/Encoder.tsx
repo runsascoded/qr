@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { useUrlStates } from 'use-prms'
+import { useActions } from 'use-kbd'
 import { downloadBlob, getQRInfo, renderPng, renderSvg, slugify, svgToBlob, type ECL } from '../lib/qr'
 import { normalizeHex } from '../lib/color'
 import { ECLs, type PARAMS } from '../lib/params'
@@ -7,6 +8,10 @@ import { usePagePaste } from '../lib/paste'
 import './Encoder.sass'
 
 type UrlState = ReturnType<typeof useUrlStates<typeof PARAMS>>
+
+// Next preset strictly greater than the current value, wrapping to the first.
+const nextPreset = (presets: number[], v: number): number => presets.find(p => p > v) ?? presets[0]
+const ROUND_PRESETS = [0, 25, 50] // square → rounded → circle
 
 export default function Encoder({ values, setValues }: Pick<UrlState, 'values' | 'setValues'>) {
   const { t: text, u: uppercase, ecl, v: version, m: margin, s: scale, fg, bg, r, ds, fr } = values
@@ -51,6 +56,52 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
       setPngErr(String((e as Error).message ?? e))
     }
   }
+
+  // Hotkeys + omnibar commands for the encode/style options.
+  useActions({
+    'cfg:ecl': {
+      label: `Error correction: cycle (now ${ecl})`,
+      group: 'Encode',
+      defaultBindings: ['g e'],
+      keywords: ['ecl', 'error correction'],
+      handler: () => setValues({ ecl: ECLs[(ECLs.indexOf(ecl) + 1) % ECLs.length] }),
+    },
+    'cfg:uppercase': {
+      label: uppercase ? 'Uppercase: turn off' : 'Uppercase: turn on',
+      group: 'Encode',
+      defaultBindings: ['g u'],
+      keywords: ['case'],
+      handler: () => setValues({ u: !uppercase }),
+    },
+    'cfg:dotRound': {
+      label: 'Dot rounding: cycle (square → round → circle)',
+      group: 'Style',
+      defaultBindings: ['g r'],
+      keywords: ['rounding', 'dots', 'circle'],
+      handler: () => setValues({ r: nextPreset(ROUND_PRESETS, r) }),
+    },
+    'cfg:finderRound': {
+      label: 'Finder rounding: cycle',
+      group: 'Style',
+      defaultBindings: ['g f'],
+      keywords: ['finder', 'corner'],
+      handler: () => setValues({ fr: nextPreset(ROUND_PRESETS, fr) }),
+    },
+    'dl:svg': {
+      label: 'Download SVG',
+      group: 'Encode',
+      defaultBindings: ['g s'],
+      enabled: !!svg,
+      handler: () => { void downloadSvg() },
+    },
+    'dl:png': {
+      label: 'Download PNG',
+      group: 'Encode',
+      defaultBindings: ['g p'],
+      enabled: !!finalText,
+      handler: () => { void downloadPng() },
+    },
+  })
 
   return (
     <section className="encoder">

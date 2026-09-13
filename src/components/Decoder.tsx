@@ -1,4 +1,5 @@
 import { useCallback, useState, type DragEvent } from 'react'
+import { useAction } from 'use-kbd'
 import { decodeImageFile, type DecodeResult } from '../lib/decode'
 import { usePagePaste } from '../lib/paste'
 import './Decoder.sass'
@@ -39,6 +40,14 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
     setCopied(true)
     setTimeout(() => setCopied(false), 1200)
   }
+
+  useAction('dec:copy', {
+    label: 'Copy decoded text',
+    group: 'Decode',
+    keywords: ['clipboard'],
+    enabled: !!result,
+    handler: () => { void copy() },
+  })
 
   function onDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault()

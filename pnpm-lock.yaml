@@ -20,6 +20,9 @@ importers:
       react-dom:
         specifier: ^19.2.6
         version: 19.2.6(react@19.2.6)
+      use-kbd:
+        specifier: ^0.13.0
+        version: 0.13.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       use-prms:
         specifier: ^0.4.1
         version: 0.4.1(react@19.2.6)
@@ -1567,6 +1570,12 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
+  use-kbd@0.13.0:
+    resolution: {integrity: sha512-36/ALKDhSTtwAc0luTXwA3pGlmIvb505XJ2aRkOKB3cevDyaiHbvW126XuPgfiLzya8r3B6E2qm6H/tS6RyKEQ==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+
   use-prms@0.4.1:
     resolution: {integrity: sha512-137eYoyglpP3bnQqU+BDnr4kJnPqkibcSBpjHAIZJugtRjtInRCi+Af+hsk5lElXcIqz+ReEA4me6YrOehg6XA==}
     peerDependencies:
@@ -3031,6 +3040,11 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  use-kbd@0.13.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
 
   use-prms@0.4.1(react@19.2.6):
     optionalDependencies:
