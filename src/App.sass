@@ -7,19 +7,75 @@
   gap: 1.5rem
 
   header
+    // Desktop: a plain header (both columns visible, no jump-nav). Mobile: a
+    // sticky top bar carrying the brand + the Encode/Decode jump-nav, so the
+    // current section is always labelled and one tap away.
     display: flex
-    flex-direction: column
-    gap: 0.25rem
+    align-items: center
+    justify-content: space-between
+    gap: 0.5rem
     border-bottom: 1px solid var(--border)
-    padding-bottom: 1rem
-    h1
-      margin: 0
-      font-size: 1.6rem
-      letter-spacing: 0.02em
-    .tagline
-      margin: 0
+    @media (min-width: 900px)
+      padding-bottom: 1rem
+    @media (max-width: 899px)
+      position: sticky
+      top: 0
+      z-index: 5
+      background: var(--bg)
+      padding: 0.5rem 0
+      .brand h1
+        font-size: 1.3rem
+    .brand
+      display: flex
+      align-items: center
+      gap: 0.4rem
+      h1
+        margin: 0
+        font-size: 1.6rem
+        letter-spacing: 0.02em
+      .info, .gh
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        padding: 0
+        width: 1.3rem
+        height: 1.3rem
+        border: none
+        background: none
+        color: var(--fg-mute)
+        cursor: pointer
+        font-size: 1rem
+        &:hover
+          color: var(--accent)
+      .info
+        cursor: help
+
+  .mode-nav
+    display: flex
+    gap: 0.25rem
+    a
+      text-align: center
+      padding: 0.3rem 0.65rem
+      border: 1px solid var(--border)
+      border-radius: 999px
       color: var(--fg-mute)
-      font-size: 0.9rem
+      font-size: 0.8rem
+      font-weight: 600
+      letter-spacing: 0.02em
+      &:hover
+        text-decoration: none
+        color: var(--fg)
+      .arr
+        opacity: 0.75
+      // "You are here" — an outline, deliberately NOT a filled/selected tab,
+      // since these are intra-page jumps, not a mode switch.
+      &.current
+        color: var(--accent)
+        border-color: var(--accent)
+    // On desktop the two halves sit side by side (both above the fold), so the
+    // jump-nav is only useful on the stacked/narrow layout.
+    @media (min-width: 900px)
+      display: none
 
   main
     display: grid
@@ -28,9 +84,14 @@
     @media (min-width: 900px)
       grid-template-columns: 1fr 1fr
       gap: 3rem
-
-  footer
-    border-top: 1px solid var(--border)
-    padding-top: 1rem
-    font-size: 0.85rem
-    color: var(--fg-mute)
+    section
+      scroll-margin-top: 3.5rem
+      // Let grid tracks shrink below the item's min-content instead of blowing
+      // the column (and the page) wider than the viewport.
+      min-width: 0
+      // On mobile the sticky mode-nav already labels the current section, so the
+      // per-section <h2> is a redundant row — hide it and reclaim the space. On
+      // desktop the nav is hidden and both columns show, so the headings return.
+      > h2
+        @media (max-width: 899px)
+          display: none

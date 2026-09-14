@@ -10,6 +10,21 @@ export type DecodeResult = Analysis & {
   height: number
 }
 
+// Core decode over raw pixels, shared by the file and camera paths.
+export function decodeImageData(imageData: ImageData): DecodeResult | null {
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' })
+  if (!code) return null
+  return {
+    ...analyze(imageData, code.location, code.version),
+    data: code.data,
+    location: code.location,
+    version: code.version,
+    modules: 17 + 4 * code.version,
+    width: imageData.width,
+    height: imageData.height,
+  }
+}
+
 export async function decodeImageFile(file: File): Promise<DecodeResult | null> {
   const url = URL.createObjectURL(file)
   try {
@@ -20,18 +35,7 @@ export async function decodeImageFile(file: File): Promise<DecodeResult | null> 
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('2d context unavailable')
     ctx.drawImage(img, 0, 0)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' })
-    if (!code) return null
-    return {
-      ...analyze(imageData, code.location, code.version),
-      data: code.data,
-      location: code.location,
-      version: code.version,
-      modules: 17 + 4 * code.version,
-      width: canvas.width,
-      height: canvas.height,
-    }
+    return decodeImageData(ctx.getImageData(0, 0, canvas.width, canvas.height))
   } finally {
     URL.revokeObjectURL(url)
   }

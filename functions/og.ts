@@ -32,7 +32,18 @@ const div = (style: string, inner = '') => `<div style="display:flex;${style}">$
 const ECLS = ['L', 'M', 'Q', 'H']
 
 export const onRequest: PagesFunction = async (ctx) => {
-  const params = new URL(ctx.request.url).searchParams
+  // The QR for a given param set never changes, but Pages Functions aren't
+  // edge-cached by Cache-Control alone — so dedupe renders through the Cache
+  // API. Params are sorted so equivalent links (any order) share one entry;
+  // this is what stops a reshared preview (or abuse) re-invoking Satori.
+  const url = new URL(ctx.request.url)
+  url.searchParams.sort()
+  const cacheKey = new Request(url.toString(), { method: 'GET' })
+  const cache = caches.default
+  const cached = await cache.match(cacheKey)
+  if (cached) return cached
+
+  const params = url.searchParams
   const text = params.get('t') || 'https://qr.rbw.sh/'
   try {
     // Mirror the app's encode options so the preview matches the page.
@@ -82,11 +93,13 @@ export const onRequest: PagesFunction = async (ctx) => {
     })
     const png = await rendered.arrayBuffer()
     if (!png.byteLength) throw new Error('ImageResponse produced 0 bytes')
-    return new Response(png, {
-      // The QR for a given set of params never changes — cache hard so
-      // reshared links don't re-invoke the renderer (also blunts abuse).
-      headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
+    const response = new Response(png, {
+      // Browser cache 1 day; shared/edge cache (incl. the Cache API store
+      // below) 7 days via s-maxage.
+      headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400, s-maxage=604800' },
     })
+    ctx.waitUntil(cache.put(cacheKey, response.clone()))
+    return response
   } catch (e) {
     // A broken render still previews — fall back to the static card.
     console.error('og render failed', e)

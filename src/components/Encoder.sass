@@ -24,40 +24,37 @@
       color: var(--fg)
       resize: vertical
 
-  .case
-    display: flex
-    flex-direction: column
-    gap: 0.35rem
-    .hint
-      font-size: 0.8rem
-      color: var(--fg-mute)
+  // Inline "ⓘ" affordance next to a field label / value.
+  .tip
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    flex-shrink: 0
+    padding: 0
+    width: 0.95rem
+    height: 0.95rem
+    border: none
+    background: none
+    color: var(--fg-mute)
+    cursor: help
+    &:hover
+      color: var(--accent)
 
-  .info
-    display: flex
-    gap: 0.5rem
-    font-family: var(--mono)
-    font-size: 0.85rem
-    .stat
-      display: flex
-      gap: 0.5rem
-      padding: 0.25rem 0.5rem
-      border: 1px solid var(--border)
-      border-radius: 4px
-      background: var(--bg-elev)
-      color: var(--fg)
-      font: inherit
+  details.customize
+    summary
       cursor: pointer
-      opacity: 0.55
+      list-style-position: outside
+      width: fit-content
+      font-size: 0.9rem
+      color: var(--fg-mute)
+      padding: 0.2rem 0
+      user-select: none
       &:hover
-        opacity: 0.8
-      &.active
-        opacity: 1
-        cursor: default
-        border-color: var(--accent)
-      .label
-        color: var(--fg-mute)
-      .mode
-        color: var(--accent)
+        color: var(--fg)
+    &[open] > summary
+      margin-bottom: 0.75rem
+    fieldset.options + fieldset.options
+      margin-top: 0.9rem
 
   fieldset.options
     border: 1px solid var(--border)
@@ -71,12 +68,22 @@
       display: grid
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))
       gap: 0.6rem 0.8rem
+      // The scalar controls (ECL, version, margin, pixel) are tiny — pack them
+      // 2–4 per row by viewport. Colors need room for swatch + hex + eyedropper.
+      &.scalars
+        grid-template-columns: repeat(auto-fit, minmax(115px, 1fr))
+      &.colors
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))
       label
         display: flex
         flex-direction: column
         gap: 0.2rem
         font-size: 0.85rem
         color: var(--fg-mute)
+        > span
+          display: flex
+          align-items: center
+          gap: 0.25rem
         select, input
           padding: 0.3rem 0.4rem
           border: 1px solid var(--border)
@@ -87,7 +94,7 @@
           font-size: 0.9rem
         &.slider
           .val
-            float: right
+            margin-left: auto
             font-family: var(--mono)
             color: var(--fg)
           input[type=range]
@@ -109,16 +116,90 @@
             min-width: 0
             font-family: var(--mono)
             text-transform: lowercase
+          .eyedropper
+            flex-shrink: 0
+            display: inline-flex
+            align-items: center
+            justify-content: center
+            width: 2rem
+            padding: 0
+            border: 1px solid var(--border)
+            border-radius: 4px
+            background: var(--bg-elev)
+            color: var(--fg-mute)
+            cursor: pointer
+            &:hover
+              border-color: var(--accent)
+              color: var(--accent)
+        .swatches
+          display: flex
+          flex-wrap: wrap
+          gap: 0.25rem
+          margin-top: 0.3rem
+          max-height: 4.6rem
+          overflow-y: auto
+          .swatch
+            width: 1.15rem
+            height: 1.15rem
+            padding: 0
+            // A mid-gray border stays visible whether the swatch is near-black
+            // or near-white (var(--border) vanishes against same-tone swatches).
+            border: 1px solid rgba(140, 140, 140, 0.75)
+            border-radius: 3px
+            cursor: pointer
+            &:hover
+              border-color: var(--accent)
+            &.active
+              border-color: var(--accent)
+              box-shadow: 0 0 0 1px var(--accent)
+    .grid + .grid
+      margin-top: 0.7rem
+    label.toggle
+      display: flex
+      flex-direction: row
+      align-items: center
+      gap: 0.45rem
+      margin-top: 0.75rem
+      font-size: 0.85rem
+      color: var(--fg-mute)
+      cursor: pointer
+      input[type=checkbox]
+        width: 1rem
+        height: 1rem
+        accent-color: var(--accent)
+        cursor: pointer
+      > span
+        display: inline-flex
+        align-items: center
+        gap: 0.25rem
+    .warn
+      margin: 0.5rem 0 0
+      font-size: 0.8rem
+      line-height: 1.4
+      color: var(--warn)
+      code
+        font-family: var(--mono)
+        font-size: 0.95em
 
   .preview
     display: flex
     flex-direction: column
     align-items: center
+    justify-content: center
     gap: 0.75rem
     padding: 1rem
+    min-height: 8rem
     border: 1px dashed var(--border)
     border-radius: 4px
     background: var(--bg-elev)
+    @media (min-width: 900px)
+      position: sticky
+      top: 1rem
+      z-index: 1
+    .empty
+      margin: 0
+      color: var(--fg-mute)
+      font-size: 0.9rem
     .qr
       width: min(100%, 320px)
       svg
@@ -127,11 +208,22 @@
         aspect-ratio: 1
         display: block
         image-rendering: pixelated
+    .qr-stats
+      font-family: var(--mono)
+      font-size: 0.8rem
+      color: var(--fg-mute)
+      margin-top: -0.25rem
     .actions
       display: flex
-      gap: 0.5rem
-      flex-wrap: wrap
+      flex-direction: column
+      align-items: center
+      gap: 0.6rem
+      width: 100%
       button
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        gap: 0.35rem
         padding: 0.4rem 0.8rem
         border: 1px solid var(--border)
         border-radius: 4px
@@ -140,9 +232,49 @@
         font-family: var(--mono)
         font-size: 0.85rem
         cursor: pointer
+        svg
+          opacity: 0.7
         &:hover
           border-color: var(--accent)
           color: var(--accent)
+          svg
+            opacity: 1
+      // SVG / PNG each as a compact label + two icon buttons; both formats sit
+      // on one row (wrapping only if truly cramped), with "Download both" below.
+      .fmt-row
+        display: flex
+        flex-wrap: wrap
+        justify-content: center
+        gap: 0.5rem 1.25rem
+      .fmt-group
+        display: flex
+        align-items: center
+        gap: 0.35rem
+        .fmt
+          font-family: var(--mono)
+          font-size: 0.8rem
+          color: var(--fg-mute)
+          margin-right: 0.1rem
+      button.icon
+        padding: 0.4rem 0.55rem
+      // "Download both" — accented so it reads as the get-everything action
+      // among the per-format icons.
+      button.icon.both
+        border-color: var(--accent)
+        color: var(--accent)
+        &:hover
+          background: var(--accent)
+          color: var(--bg)
+          svg
+            opacity: 1
+      button.primary
+        width: min(100%, 320px)
+        border-color: var(--accent)
+        color: var(--accent)
+        font-weight: 600
+        &:hover
+          background: var(--accent)
+          color: var(--bg)
     .err
       color: #d73a49
       font-size: 0.85rem

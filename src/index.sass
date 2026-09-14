@@ -5,6 +5,7 @@
   --fg-mute: #555
   --border: #ddd
   --accent: #0366d6
+  --warn: #9a6700
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace
 
 @media (prefers-color-scheme: dark)
@@ -15,9 +16,13 @@
     --fg-mute: #8b949e
     --border: #30363d
     --accent: #58a6ff
+    --warn: #d29922
 
 *
   box-sizing: border-box
+
+html
+  scroll-behavior: smooth
 
 html, body, #root
   margin: 0

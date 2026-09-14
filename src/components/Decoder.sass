@@ -25,6 +25,38 @@
     &:hover
       border-color: var(--accent)
 
+  .cam-controls
+    display: flex
+    justify-content: center
+    button
+      padding: 0.4rem 0.9rem
+      border: 1px solid var(--border)
+      border-radius: 4px
+      background: var(--bg)
+      color: var(--fg)
+      font-family: var(--mono)
+      font-size: 0.85rem
+      cursor: pointer
+      &:hover:not(:disabled)
+        border-color: var(--accent)
+        color: var(--accent)
+      &:disabled
+        opacity: 0.6
+        cursor: default
+
+  .camera
+    display: flex
+    justify-content: center
+    &[hidden]
+      display: none
+    video
+      width: min(100%, 320px)
+      aspect-ratio: 1
+      object-fit: cover
+      background: #000
+      border: 1px solid var(--border)
+      border-radius: 6px
+
   .thumb
     display: flex
     flex-direction: column

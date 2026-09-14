@@ -1,6 +1,7 @@
 import { useCallback, useState, type DragEvent } from 'react'
 import { useAction } from 'use-kbd'
 import { decodeImageFile, type DecodeResult } from '../lib/decode'
+import { useCamera } from '../lib/useCamera'
 import { usePagePaste } from '../lib/paste'
 import './Decoder.sass'
 
@@ -12,25 +13,44 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
   const [dragOver, setDragOver] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Swap the shown image, revoking any prior object URL (data: URLs no-op).
+  const showImage = useCallback((url: string) => {
+    setImgUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return url
+    })
+  }, [])
+
+  const accept = useCallback((r: DecodeResult) => {
+    setErr(null)
+    setResult(r)
+    setCopied(false)
+    onDecoded(r)
+  }, [onDecoded])
+
   const handleFile = useCallback(async (file: File | null | undefined) => {
     if (!file) return
     setErr(null)
     setResult(null)
     setDims(null)
     setCopied(false)
-    setImgUrl(prev => {
-      if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
-    })
+    showImage(URL.createObjectURL(file))
     try {
       const r = await decodeImageFile(file)
       if (!r) { setErr('No QR code found in image.'); return }
-      setResult(r)
-      onDecoded(r)
+      accept(r)
     } catch (e) {
       setErr(String((e as Error).message ?? e))
     }
-  }, [onDecoded])
+  }, [accept, showImage])
+
+  const onCameraResult = useCallback((r: DecodeResult, snapshot: string) => {
+    setDims(null)
+    showImage(snapshot)
+    accept(r)
+  }, [accept, showImage])
+
+  const { videoRef, state: camState, error: camError, start: startCamera, stop: stopCamera } = useCamera(onCameraResult)
 
   usePagePaste({ onImage: handleFile })
 
@@ -49,6 +69,16 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
     handler: () => { void copy() },
   })
 
+  const scanning = camState === 'scanning'
+  const starting = camState === 'starting'
+
+  useAction('dec:camera', {
+    label: scanning ? 'Stop camera scan' : 'Scan a QR with the camera',
+    group: 'Decode',
+    keywords: ['camera', 'scan', 'webcam'],
+    handler: () => { if (scanning) stopCamera(); else void startCamera() },
+  })
+
   function onDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault()
     setDragOver(false)
@@ -56,8 +86,8 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
   }
 
   return (
-    <section className="decoder">
-      <h2>Decode</h2>
+    <section className="decoder" id="decode">
+      <h2>Scan</h2>
       <label
         className={`dropzone ${dragOver ? 'over' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -73,11 +103,23 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
         <span>Drop a QR-code image here, paste one (<kbd>⌘V</kbd> / <kbd>Ctrl+V</kbd>), or click to choose</span>
       </label>
 
+      <div className="cam-controls">
+        <button type="button" onClick={() => { if (scanning || starting) stopCamera(); else void startCamera() }}>
+          {scanning ? 'Stop camera' : starting ? 'Starting… (cancel)' : 'Scan with camera'}
+        </button>
+      </div>
+
+      <div className={`camera ${scanning ? 'live' : ''}`} hidden={!scanning && !starting}>
+        <video ref={videoRef} muted playsInline />
+      </div>
+
+      {camError && <pre className="err">{camError}</pre>}
+
       {imgUrl && (
         <div className="thumb">
           <img
             src={imgUrl}
-            alt="uploaded QR"
+            alt="scanned QR"
             onLoad={e => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
           />
           {dims && (
