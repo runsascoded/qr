@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useUrlStates } from 'use-prms'
 import { HotkeysProvider, LookupModal, Omnibar, SequenceModal, ShortcutsModal, SpeedDial } from 'use-kbd'
 import 'use-kbd/styles.css'
@@ -12,59 +12,6 @@ import { useDomainToggle } from './lib/useDomainToggle'
 import './App.sass'
 
 const REPO = 'https://github.com/runsascoded/qr'
-const SECTIONS = ['encode', 'decode'] as const
-type Section = (typeof SECTIONS)[number]
-
-// A sticky "Encode / Decode" switch: it smooth-scrolls (the sections stay on
-// one scrollable page) and highlights whichever half is centered, so the two
-// halves are obvious above the fold without hiding either behind a tab.
-const SECTION_LABELS: Record<Section, string> = { encode: 'Generate', decode: 'Scan' }
-
-function ModeNav() {
-  const [active, setActive] = useState<Section>('encode')
-  useEffect(() => {
-    // Active = the last section whose top has scrolled above the bottom of the
-    // sticky header. Scroll-position based (not an IntersectionObserver band)
-    // so "you are here" is unambiguous even with tall sections.
-    const update = () => {
-      const header = document.querySelector('.app > header')
-      const line = header ? header.getBoundingClientRect().bottom : 60
-      let cur: Section = SECTIONS[0]
-      for (const id of SECTIONS) {
-        const el = document.getElementById(id)
-        if (el && el.getBoundingClientRect().top - line <= 0) cur = id
-      }
-      // A short final section may never reach the top line (the page bottoms
-      // out first), so at the end of the scroll it's the one you're viewing.
-      const de = document.documentElement
-      if (window.scrollY + window.innerHeight >= de.scrollHeight - 4) {
-        cur = SECTIONS[SECTIONS.length - 1]
-      }
-      setActive(cur)
-    }
-    update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
-  }, [])
-  return (
-    <nav className="mode-nav" aria-label="Jump to section">
-      {SECTIONS.map(id => {
-        const current = active === id
-        const below = SECTIONS.indexOf(id) > SECTIONS.indexOf(active)
-        return (
-          <a key={id} href={`#${id}`} className={current ? 'current' : ''} aria-current={current || undefined}>
-            {SECTION_LABELS[id]}
-            {!current && <span className="arr" aria-hidden="true">{below ? ' ↓' : ' ↑'}</span>}
-          </a>
-        )
-      })}
-    </nav>
-  )
-}
 
 // Hooks that only register actions must run inside HotkeysProvider; a
 // null-rendering registrar is the idiomatic place for them.
@@ -123,7 +70,6 @@ export default function App() {
             </Tooltip>
             <a className="gh" href={REPO} target="_blank" rel="noopener noreferrer" aria-label="Source on GitHub"><GitHubIcon /></a>
           </div>
-          <ModeNav />
         </header>
         <main>
           <Encoder values={values} setValues={setValues} />

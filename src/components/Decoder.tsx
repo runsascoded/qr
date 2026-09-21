@@ -1,4 +1,4 @@
-import { useCallback, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import { useAction } from 'use-kbd'
 import { decodeImageFile, type DecodeResult } from '../lib/decode'
 import { useCamera } from '../lib/useCamera'
@@ -12,6 +12,7 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
   const [dims, setDims] = useState<{ w: number, h: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [copied, setCopied] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Swap the shown image, revoking any prior object URL (data: URLs no-op).
   const showImage = useCallback((url: string) => {
@@ -72,6 +73,20 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
   const scanning = camState === 'scanning'
   const starting = camState === 'starting'
 
+  // The header's upload/camera shortcuts reach the decoder through window
+  // events: jump the section into view, then open the file dialog / camera.
+  useEffect(() => {
+    const toDecode = () => document.getElementById('decode')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const onUpload = () => { toDecode(); fileInputRef.current?.click() }
+    const onCamera = () => { toDecode(); if (!scanning && !starting) void startCamera() }
+    window.addEventListener('qr:scan-upload', onUpload)
+    window.addEventListener('qr:scan-camera', onCamera)
+    return () => {
+      window.removeEventListener('qr:scan-upload', onUpload)
+      window.removeEventListener('qr:scan-camera', onCamera)
+    }
+  }, [scanning, starting, startCamera])
+
   useAction('dec:camera', {
     label: scanning ? 'Stop camera scan' : 'Scan a QR with the camera',
     group: 'Decode',
@@ -95,6 +110,7 @@ export default function Decoder({ onDecoded }: { onDecoded: (r: DecodeResult) =>
         onDrop={onDrop}
       >
         <input
+          ref={fileInputRef}
           type="file"
           accept="image/*"
           onChange={e => handleFile(e.target.files?.[0])}

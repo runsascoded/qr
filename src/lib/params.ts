@@ -4,9 +4,13 @@ import type { ECL } from './qr'
 
 export const ECLs: ECL[] = ['L', 'M', 'Q', 'H']
 
+// The seed payload shown on a cold load; the input reverts to a labelled,
+// non-full-width state only while it still holds this exact value.
+export const DEFAULT_TEXT = 'https://qr.rbw.sh/'
+
 // Encoder state lives in the URL, so every QR is a shareable link.
 export const PARAMS = {
-  t: defStringParam('https://qr.rbw.sh/'),
+  t: defStringParam(DEFAULT_TEXT),
   u: boolParam,
   ecl: enumParam<ECL>('L', ECLs),
   v: intParam(0),    // QR version 1–40; 0 = smallest that fits

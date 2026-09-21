@@ -3,7 +3,7 @@ import type { useUrlStates } from 'use-prms'
 import { useActions } from 'use-kbd'
 import { downloadBlob, getQRInfo, renderPng, renderSvg, slugify, svgToBlob, type ECL } from '../lib/qr'
 import { normalizeHex } from '../lib/color'
-import { ECLs, type PARAMS } from '../lib/params'
+import { DEFAULT_TEXT, ECLs, type PARAMS } from '../lib/params'
 import { usePagePaste } from '../lib/paste'
 import Tooltip from './Tooltip'
 import './Encoder.sass'
@@ -122,12 +122,48 @@ function CheckIcon() {
   )
 }
 
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 10.5V2.5M5 5.5l3-3 3 3M3 10v2.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V10" />
+    </svg>
+  )
+}
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h1L5.5 2.5h5L11.5 4h1A1.5 1.5 0 0 1 14 5.5v6A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" />
+      <circle cx="8" cy="8.5" r="2.3" />
+    </svg>
+  )
+}
+
+function ResizeIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9.5 2.5H13.5V6.5M6.5 13.5H2.5V9.5M13.5 2.5l-4 4M2.5 13.5l4-4" />
+    </svg>
+  )
+}
+
 // A small "ⓘ" that reveals an explanation — hover on desktop, tap on touch.
 function InfoTip({ label }: { label: ReactNode }) {
   return (
     <Tooltip openOnClick label={label}>
       <button type="button" className="tip" aria-label="More information"><InfoIcon /></button>
     </Tooltip>
+  )
+}
+
+function RecentsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="4.4" height="4.4" rx="1" />
+      <rect x="9.1" y="2.5" width="4.4" height="4.4" rx="1" />
+      <rect x="2.5" y="9.1" width="4.4" height="4.4" rx="1" />
+      <rect x="9.1" y="9.1" width="4.4" height="4.4" rx="1" />
+    </svg>
   )
 }
 
@@ -156,19 +192,55 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
     try { localStorage.setItem('qr:customize', open ? '1' : '0') } catch { /* private mode */ }
   }
 
+  // Pixel size only affects the PNG raster, so its control lives by the PNG
+  // buttons behind a small toggle rather than in the Options grid.
+  const [pxOpen, setPxOpen] = useState(false)
+
+  // Mobile: once the full preview scrolls out of view, a shrunken QR thumbnail
+  // rides along in the sticky Text/URL bar (tap it to jump back up).
+  const [pinned, setPinned] = useState(false)
+  const previewRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = previewRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setPinned(!e.isIntersecting), { threshold: 0 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   // Text pasted anywhere outside an input becomes the QR payload.
   const onPasteText = useCallback((t: string) => setValues({ t }), [setValues])
   usePagePaste({ onText: onPasteText })
 
   const finalText = uppercase ? text.toUpperCase() : text
 
-  const opts = useMemo(() => ({
-    text: finalText, ecl, version, margin, scale, fg, bg, r, ds, fr,
-  }), [finalText, ecl, version, margin, scale, fg, bg, r, ds, fr])
+  // `version` is a floor, not an exact size. The smallest version that fits the
+  // data (at this ECL) is the true minimum, so a too-small entry bumps up to it
+  // rather than erroring — you can force a *larger* code, never a smaller one.
+  const autoMin = useMemo(() => getQRInfo(finalText, ecl, 0)?.version ?? null, [finalText, ecl])
+  const effVersion = version === 0 || autoMin === null ? version : Math.max(version, autoMin)
+  const bumped = version > 0 && autoMin !== null && version < autoMin
 
-  const infoLower = useMemo(() => getQRInfo(text, ecl, version), [text, ecl, version])
-  const infoUpper = useMemo(() => getQRInfo(text.toUpperCase(), ecl, version), [text, ecl, version])
-  const info = uppercase ? infoUpper : infoLower
+  const opts = useMemo(() => ({
+    text: finalText, ecl, version: effVersion, margin, scale, fg, bg, r, ds, fr,
+  }), [finalText, ecl, effVersion, margin, scale, fg, bg, r, ds, fr])
+
+  const info = useMemo(() => getQRInfo(finalText, ecl, effVersion), [finalText, ecl, effVersion])
+  // For the uppercase hint: what each casing auto-picks (version 0), so the
+  // comparison reflects the density win, not a forced version.
+  const infoLower = useMemo(() => getQRInfo(text, ecl, 0), [text, ecl])
+  const infoUpper = useMemo(() => getQRInfo(text.toUpperCase(), ecl, 0), [text, ecl])
+
+  // The resulting version at each ECL, so the segmented control can show the
+  // size cost of more redundancy at a glance (respecting the version floor).
+  const eclVersions = useMemo(() => {
+    const out = {} as Record<ECL, number | null>
+    for (const l of ECLs) {
+      const min = getQRInfo(finalText, l, 0)?.version ?? null
+      out[l] = min === null ? null : version === 0 ? min : Math.max(version, min)
+    }
+    return out
+  }, [finalText, version])
 
   const recentFg = useRecentColors('qr:recent:fg', fg)
   const recentBg = useRecentColors('qr:recent:bg', bg)
@@ -301,23 +373,42 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
   return (
     <section className="encoder" id="encode">
       <h2>Generate</h2>
-      <label className="text-input">
-        <span>Text / URL</span>
-        <textarea
-          value={text}
-          onChange={e => setValues({ t: e.target.value })}
-          rows={1}
-          spellCheck={false}
-          placeholder="https://example.com/"
-        />
-      </label>
+      <div className={`sticky-head ${pinned ? 'pinned' : ''}`}>
+        <label className={`text-input ${text === DEFAULT_TEXT ? '' : 'full'}`}>
+          {text === DEFAULT_TEXT && <span>Text / URL</span>}
+          <textarea
+            value={text}
+            onChange={e => setValues({ t: e.target.value })}
+            rows={1}
+            spellCheck={false}
+            placeholder="https://example.com/"
+          />
+        </label>
+        {svg && (
+          <button
+            type="button"
+            className="mini-qr"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="Scroll back to top"
+            title="Scroll to top"
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        )}
+        <div className="scan-shortcuts">
+          <Tooltip label="Scan a QR image file">
+            <button type="button" className="scan-btn" onClick={() => window.dispatchEvent(new CustomEvent('qr:scan-upload'))} aria-label="Scan a QR image file"><UploadIcon /></button>
+          </Tooltip>
+          <Tooltip label="Scan a QR with the camera">
+            <button type="button" className="scan-btn" onClick={() => window.dispatchEvent(new CustomEvent('qr:scan-camera'))} aria-label="Scan with camera"><CameraIcon /></button>
+          </Tooltip>
+        </div>
+      </div>
 
-      <div className="preview">
+      <div className="preview" ref={previewRef}>
         {(renderErr ?? pngErr) && <pre className="err">{renderErr ?? pngErr}</pre>}
         {svg && info ? (
           <>
             <div className="qr" dangerouslySetInnerHTML={{ __html: svg }} />
-            {info && <div className="qr-stats">V{info.version} · {info.modules}×{info.modules} · {info.mode}</div>}
             <div className="actions">
               <div className="fmt-row">
                 <div className="fmt-group">
@@ -337,6 +428,9 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
                   <Tooltip label="Save .png file">
                     <button className="icon" onClick={downloadPng} aria-label="Save PNG file"><DownloadIcon /></button>
                   </Tooltip>
+                  <Tooltip label={`PNG resolution: ${scale}px per module`}>
+                    <button className={`icon px ${pxOpen ? 'on' : ''}`} onClick={() => setPxOpen(o => !o)} aria-label="PNG resolution" aria-expanded={pxOpen}><ResizeIcon /></button>
+                  </Tooltip>
                 </div>
                 <div className="fmt-group">
                   <Tooltip label="Download both (SVG + PNG)">
@@ -344,7 +438,16 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
                   </Tooltip>
                 </div>
               </div>
+              {pxOpen && (
+                <div className="px-panel">
+                  <label className="slider">
+                    <span>PNG px / module <InfoTip label={<>How many image pixels each module renders at — sets the exported/copied PNG’s resolution ({info ? `currently ${(info.modules + 2 * margin) * scale}px square` : ''}). The SVG is resolution-independent.</>} /> <span className="val">{scale}px</span></span>
+                    <input type="range" min={1} max={40} value={scale} onChange={e => setValues({ s: +e.target.value })} />
+                  </label>
+                </div>
+              )}
             </div>
+            {info && <div className="qr-stats">V{info.version} · {info.modules}²</div>}
           </>
         ) : (
           !renderErr && !pngErr && <p className="empty">Enter text above to generate a QR.</p>
@@ -355,30 +458,37 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
         <summary>Customize</summary>
         <fieldset className="options">
           <legend>Options</legend>
+          <div className="ecl-field">
+            <span className="field-label">Error correction <InfoTip label={<>Redundancy so a scuffed or partly-covered code still scans. <b>L</b> ≈ 7%, <b>M</b> ≈ 15%, <b>Q</b> ≈ 25%, <b>H</b> ≈ 30% recoverable. Higher = more robust, but denser — the <b>V</b> under each is the resulting size.</>} /></span>
+            <div className="ecl-seg" role="radiogroup" aria-label="Error correction level">
+              {ECLs.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  role="radio"
+                  aria-checked={ecl === l}
+                  className={`ecl-opt ${ecl === l ? 'on' : ''}`}
+                  onClick={() => setValues({ ecl: l })}
+                >
+                  <span className="lvl">{l}</span>
+                  <span className="ev">{eclVersions[l] ? `V${eclVersions[l]}` : '—'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid scalars">
             <label>
-              <span>Error correction <InfoTip label={<>Redundancy so a scuffed or partly-covered code still scans. <b>L</b> ≈ 7%, <b>M</b> ≈ 15%, <b>Q</b> ≈ 25%, <b>H</b> ≈ 30% recoverable. Higher = more robust, but denser (often a bigger version).</>} /></span>
-              <select value={ecl} onChange={e => setValues({ ecl: e.target.value as ECL })}>
-                {ECLs.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </label>
-            <label>
-              <span>Version <InfoTip label={<>QR size tier: <b>1</b> (21×21 modules) up to <b>40</b> (177×177). <b>0 = auto</b> — the smallest version that fits your text at the chosen error-correction level.</>} /></span>
+              <span>Version <InfoTip label={<>Size tier, from <b>1</b> (21×21) up to <b>40</b> (177×177). <b>0 = auto</b> picks the smallest that fits. It’s a <b>floor</b>: raise it for a larger, lower-density code — you can’t go smaller than the data needs (it’ll bump up).</>} /></span>
               <input type="number" min={0} max={40} value={version} onChange={e => setValues({ v: +e.target.value })} />
             </label>
             <label>
               <span>Margin <InfoTip label={<>The blank “quiet zone” border around the code, measured in modules. The spec recommends ≥ 4; many scanners tolerate less.</>} /></span>
               <input type="number" min={0} max={10} value={margin} onChange={e => setValues({ m: +e.target.value })} />
             </label>
-            <label>
-              <span>Pixel size <InfoTip label={<>How many image pixels each module (square) renders at — sets the exported PNG’s resolution. The SVG is resolution-independent.</>} /></span>
-              <input type="number" min={1} max={40} value={scale} onChange={e => setValues({ s: +e.target.value })} />
-            </label>
           </div>
-          <div className="grid colors">
-            <ColorInput label="Foreground" info="The dark module color. Keep strong contrast with the background (dark-on-light) for reliable scanning." value={fg} recents={recentFg} onChange={v => setValues({ fg: v })} />
-            <ColorInput label="Background" info="The light module color. Light-on-dark (inverted) codes often fail to scan — prefer a light background." value={bg} recents={recentBg} onChange={v => setValues({ bg: v })} />
-          </div>
+          {bumped && autoMin !== null && (
+            <p className="note">Version {version} can’t hold this data — showing <b>V{autoMin}</b> (the smallest that fits).</p>
+          )}
           <label className="toggle">
             <input type="checkbox" checked={uppercase} onChange={e => setValues({ u: e.target.checked })} />
             <span>
@@ -395,6 +505,10 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
               ⚠ URL paths &amp; queries are case-sensitive — uppercasing <code>/MyPage</code> → <code>/MYPAGE</code> breaks the link. Only use it when the whole text is case-insensitive.
             </p>
           )}
+          <div className="grid colors">
+            <ColorInput label="Foreground" info="The dark module color. Keep strong contrast with the background (dark-on-light) for reliable scanning." value={fg} recents={recentFg} onChange={v => setValues({ fg: v })} />
+            <ColorInput label="Background" info="The light module color. Light-on-dark (inverted) codes often fail to scan — prefer a light background." value={bg} recents={recentBg} onChange={v => setValues({ bg: v })} />
+          </div>
         </fieldset>
 
         <fieldset className="options">
@@ -435,6 +549,7 @@ function ColorInput({ label, info, value, recents, onChange }: {
   onChange: (value: string) => void
 }) {
   const [draft, setDraft] = useState(value)
+  const [showRecents, setShowRecents] = useState(false)
   const [prev, setPrev] = useState(value)
   if (value !== prev) {  // external change (URL, decode) wins over the draft
     setPrev(value)
@@ -474,8 +589,20 @@ function ColorInput({ label, info, value, recents, onChange }: {
             <EyedropperIcon />
           </button>
         )}
+        {recents.length > 0 && (
+          <button
+            type="button"
+            className={`recents-toggle ${showRecents ? 'on' : ''}`}
+            onClick={() => setShowRecents(s => !s)}
+            aria-label="Recent colors"
+            aria-expanded={showRecents}
+            title="Recent colors"
+          >
+            <RecentsIcon />
+          </button>
+        )}
       </div>
-      {recents.length > 0 && (
+      {showRecents && recents.length > 0 && (
         <div className="swatches">
           {recents.map(c => (
             <button
