@@ -212,6 +212,20 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
   const onPasteText = useCallback((t: string) => setValues({ t }), [setValues])
   usePagePaste({ onText: onPasteText })
 
+  // Grow the payload field to fit its content (long URLs / multi-line text)
+  // instead of scrolling a one-line box; CSS caps it and hands off to a
+  // scrollbar past the cap.
+  const taRef = useRef<HTMLTextAreaElement | null>(null)
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    // border-box height must include the borders, or scrollHeight (content +
+    // padding only) under-sizes the box by the border and leaves a scrollbar.
+    const border = el.offsetHeight - el.clientHeight
+    el.style.height = `${el.scrollHeight + border}px`
+  }, [text])
+
   const finalText = uppercase ? text.toUpperCase() : text
 
   // `version` is a floor, not an exact size. The smallest version that fits the
@@ -377,6 +391,7 @@ export default function Encoder({ values, setValues }: Pick<UrlState, 'values' |
         <label className={`text-input ${text === DEFAULT_TEXT ? '' : 'full'}`}>
           {text === DEFAULT_TEXT && <span>Text / URL</span>}
           <textarea
+            ref={taRef}
             value={text}
             onChange={e => setValues({ t: e.target.value })}
             rows={1}

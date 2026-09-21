@@ -91,12 +91,20 @@
       min-width: 0
       font-family: var(--mono)
       font-size: 0.95rem
+      // Integer line-height so scrollHeight is a whole number of lines — a
+      // fractional one rounds off-by-one against the JS-set height and leaves a
+      // perpetual 1px scrollbar.
+      line-height: 20px
       padding: 0.5rem
       border: 1px solid var(--border)
       border-radius: 4px
       background: var(--bg-elev)
       color: var(--fg)
-      resize: vertical
+      // Height is driven by JS to fit content; cap it here and let a scrollbar
+      // take over past the cap. No manual resize (it would fight the auto-fit).
+      resize: none
+      overflow-y: auto
+      max-height: 40vh
 
   // Inline "ⓘ" affordance next to a field label / value.
   .tip
